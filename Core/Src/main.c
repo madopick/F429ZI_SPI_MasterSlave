@@ -25,12 +25,12 @@
 /* Private macro -------------------------------------------------------------*/
 
 /* Private variables ---------------------------------------------------------*/
-SPI_HandleTypeDef hspi2;
 SPI_HandleTypeDef hspi3;
-DMA_HandleTypeDef hdma_spi2_rx;
-DMA_HandleTypeDef hdma_spi2_tx;
+SPI_HandleTypeDef hspi4;
 DMA_HandleTypeDef hdma_spi3_rx;
 DMA_HandleTypeDef hdma_spi3_tx;
+DMA_HandleTypeDef hdma_spi4_rx;
+DMA_HandleTypeDef hdma_spi4_tx;
 
 UART_HandleTypeDef huart3;
 
@@ -59,13 +59,13 @@ PUTCHAR_PROTOTYPE
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_DMA_Init(void);
-static void MX_SPI2_Init(void);
-static void MX_USART3_UART_Init(void);
 static void MX_SPI3_Init(void);
+static void MX_USART3_UART_Init(void);
+static void MX_SPI4_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* Buffer used for transmission */
-uint8_t aTxSlaveBuffer[] = "SPI Slave MSG";
+uint8_t aTxSlaveBuffer[] = "SPI Slave MSG1";
 
 /* Buffer used for reception */
 #define SPI_TIMEOUT_MAX           	0x1000
@@ -73,6 +73,7 @@ uint8_t aTxSlaveBuffer[] = "SPI Slave MSG";
 uint8_t aRxBuffer[DATA_LENGTH];
 
 static volatile uint8_t slave_send = 0;
+static volatile uint8_t master_rcv = 0;
 /**
   * @brief  The application entry point.
   * @retval int
@@ -89,33 +90,46 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
-  MX_DMA_Init();
-  MX_SPI2_Init();
-  MX_USART3_UART_Init();
+  //MX_DMA_Init();
   MX_SPI3_Init();
+  MX_SPI4_Init();
+  MX_USART3_UART_Init();
+
+
+  printf("main loop\r\n");
+  if(HAL_SPI_Receive_IT(&hspi3, (uint8_t *)&aRxBuffer[0], DATA_LENGTH) != HAL_OK)
+  {
+	  printf("SPI master error\r\n");
+  }
 
 
   /* Infinite loop */
   while (1)
   {
-	  while((HAL_SPI_GetState(&hspi2) != HAL_SPI_STATE_READY) && (HAL_SPI_GetState(&hspi3) != HAL_SPI_STATE_READY))
+	  while((HAL_SPI_GetState(&hspi3) != HAL_SPI_STATE_READY) && (HAL_SPI_GetState(&hspi4) != HAL_SPI_STATE_READY))
 	  {
-		  HAL_Delay(10);
+		  HAL_Delay(50);
 	  }
+
+	  if (HAL_SPI_Receive_IT(&hspi3, (uint8_t *)&aRxBuffer[0], DATA_LENGTH) != HAL_OK)
+	  {
+		  printf("SPI master error\r\n");
+	  }
+
 
 	  HAL_GPIO_TogglePin(LD1_GPIO_Port, LD1_Pin);
 	  HAL_Delay(1000);
 
-	  printf("main loop\r\n");
-	  //if(HAL_SPI_Receive(&hspi2, (uint8_t *)&aRxBuffer[0], DATA_LENGTH, 1000) != HAL_OK)
-	  if(HAL_SPI_Transmit(&hspi2, (uint8_t *)&aTxSlaveBuffer[0], sizeof(aTxSlaveBuffer), 1000) != HAL_OK)
-	  {
-		  printf("error receive\r\n");
-	  }
-	  else
-	  {
-		  printf("RX: %s\r\n\n",(char*)aRxBuffer);
-	  }
+
+//	  if(HAL_SPI_Receive(&hspi3, (uint8_t *)&aRxBuffer[0], DATA_LENGTH, 1000) != HAL_OK)
+//	  {
+//		  printf("SPI master error\r\n");
+//	  }
+//	  else
+//	  {
+//		  printf("RXM: %s\r\n\n",(char*)aRxBuffer);
+//		  //printf("SPI master OK\r\n");
+//	  }
 
 	  //memset(aRxBuffer, 0, DATA_LENGTH);
   }
@@ -127,15 +141,14 @@ int main(void)
 
 void HAL_SPI_RxCpltCallback(SPI_HandleTypeDef *hspi)
 {
-	if(hspi->Instance == SPI2)
+	if(hspi->Instance == SPI3)
 	{
-		if(HAL_SPI_Receive_IT(&hspi2, (uint8_t *)&aRxBuffer[0], DATA_LENGTH) != HAL_OK)
-		{
-			printf("error receive\r\n");
-		}
+		master_rcv = 1;
+		printf("RXM: %s\r\n\n",(char*)aRxBuffer);
 	}
-	else if(hspi->Instance == SPI3)
+	else if(hspi->Instance == SPI4)
 	{
+		printf("RXS: %s\r\n\n",(char*)aRxBuffer);
 		slave_send = 1;
 	}
 }
@@ -143,20 +156,24 @@ void HAL_SPI_RxCpltCallback(SPI_HandleTypeDef *hspi)
 
 void HAL_SPI_TxCpltCallback(SPI_HandleTypeDef *hspi)
 {
-	if(hspi->Instance == SPI2)
+	if(hspi->Instance == SPI3)
 	{
 		printf("SPI Master transmited\r\n");
-		slave_send = 1;
+		slave_send = 0;
 	}
-	else if(hspi->Instance == SPI3)
+	else if(hspi->Instance == SPI4)
 	{
 		printf("SPI Slave transmited\r\n");
-		slave_send = 1;
+		slave_send = 0;
 	}
-
-
 }
 
+
+
+void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi)
+{
+	printf("SPI TX RX CB\r\n");
+}
 
 
 /**
@@ -168,14 +185,13 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
 	 if ((GPIO_Pin == USER_Btn_Pin) && (slave_send == 0))
 	 {
-		 printf("button EXTI\r\n");
-		 slave_send = 1;
+		 //printf("button EXTI\r\n");
+		 //slave_send = 1;
 
 #if 1
-		 //if(HAL_SPI_Transmit_IT(&hspi3, aTxSlaveBuffer, sizeof(aTxSlaveBuffer)) != HAL_OK)
-		 if(HAL_SPI_Receive_IT(&hspi3, &aRxBuffer[0], DATA_LENGTH) != HAL_OK)
+		 if(HAL_SPI_Transmit_IT(&hspi4, aTxSlaveBuffer, sizeof(aTxSlaveBuffer)) != HAL_OK)
 		 {
-			 Error_Handler();
+			 //Error_Handler();
 		 }
 #endif
 
@@ -230,32 +246,6 @@ void SystemClock_Config(void)
   }
 }
 
-/**
-  * @brief SPI2 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_SPI2_Init(void)
-{
-  /* SPI2 parameter configuration*/
-  hspi2.Instance 				= SPI2;
-  hspi2.Init.Mode 				= SPI_MODE_MASTER;
-  hspi2.Init.Direction 			= SPI_DIRECTION_2LINES;
-  hspi2.Init.DataSize 			= SPI_DATASIZE_8BIT;
-  hspi2.Init.CLKPolarity 		= SPI_POLARITY_LOW;
-  hspi2.Init.CLKPhase 			= SPI_PHASE_1EDGE;
-  hspi2.Init.NSS 				= SPI_NSS_SOFT;
-  hspi2.Init.BaudRatePrescaler 	= SPI_BAUDRATEPRESCALER_2;
-  hspi2.Init.FirstBit 			= SPI_FIRSTBIT_MSB;
-  hspi2.Init.TIMode 			= SPI_TIMODE_DISABLE;
-  hspi2.Init.CRCCalculation 	= SPI_CRCCALCULATION_DISABLE;
-  hspi2.Init.CRCPolynomial 		= 10;
-  if (HAL_SPI_Init(&hspi2) != HAL_OK)
-  {
-    Error_Handler();
-  }
-
-}
 
 /**
   * @brief SPI3 Initialization Function
@@ -265,18 +255,44 @@ static void MX_SPI2_Init(void)
 static void MX_SPI3_Init(void)
 {
   /* SPI3 parameter configuration*/
-  hspi3.Instance 				= SPI3;
-  hspi3.Init.Mode 				= SPI_MODE_SLAVE;
-  hspi3.Init.Direction 			= SPI_DIRECTION_2LINES;
-  hspi3.Init.DataSize 			= SPI_DATASIZE_8BIT;
-  hspi3.Init.CLKPolarity 		= SPI_POLARITY_LOW;
-  hspi3.Init.CLKPhase 			= SPI_PHASE_1EDGE;
-  hspi3.Init.NSS 				= SPI_NSS_SOFT;
-  hspi3.Init.FirstBit 			= SPI_FIRSTBIT_MSB;
-  hspi3.Init.TIMode 			= SPI_TIMODE_DISABLE;
-  hspi3.Init.CRCCalculation 	= SPI_CRCCALCULATION_DISABLE;
-  hspi3.Init.CRCPolynomial 		= 10;
+  hspi3.Instance 			= SPI3;
+  hspi3.Init.Mode 			= SPI_MODE_MASTER;
+  hspi3.Init.Direction 		= SPI_DIRECTION_2LINES;
+  hspi3.Init.DataSize 		= SPI_DATASIZE_8BIT;
+  hspi3.Init.CLKPolarity 	= SPI_POLARITY_HIGH;
+  hspi3.Init.CLKPhase 		= SPI_PHASE_1EDGE;
+  hspi3.Init.NSS 			= SPI_NSS_SOFT;
+  hspi3.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_2;
+  hspi3.Init.FirstBit 		= SPI_FIRSTBIT_MSB;
+  hspi3.Init.TIMode 		= SPI_TIMODE_DISABLE;
+  hspi3.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
+  hspi3.Init.CRCPolynomial 	= 10;
   if (HAL_SPI_Init(&hspi3) != HAL_OK)
+  {
+    Error_Handler();
+  }
+}
+
+/**
+  * @brief SPI4 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_SPI4_Init(void)
+{
+  /* SPI4 parameter configuration*/
+  hspi4.Instance 			= SPI4;
+  hspi4.Init.Mode 			= SPI_MODE_SLAVE;
+  hspi4.Init.Direction 		= SPI_DIRECTION_2LINES;
+  hspi4.Init.DataSize 		= SPI_DATASIZE_8BIT;
+  hspi4.Init.CLKPolarity 	= SPI_POLARITY_HIGH;
+  hspi4.Init.CLKPhase 		= SPI_PHASE_1EDGE;
+  hspi4.Init.NSS 			= SPI_NSS_SOFT;
+  hspi4.Init.FirstBit 		= SPI_FIRSTBIT_MSB;
+  hspi4.Init.TIMode 		= SPI_TIMODE_DISABLE;
+  hspi4.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
+  hspi4.Init.CRCPolynomial 	= 10;
+  if (HAL_SPI_Init(&hspi4) != HAL_OK)
   {
     Error_Handler();
   }

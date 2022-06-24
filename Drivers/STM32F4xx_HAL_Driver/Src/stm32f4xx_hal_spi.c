@@ -198,6 +198,7 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "stm32f4xx_hal.h"
+#include "main.h"
 
 /** @addtogroup STM32F4xx_HAL_Driver
   * @{
@@ -2391,7 +2392,8 @@ void HAL_SPI_IRQHandler(SPI_HandleTypeDef *hspi)
   /* SPI in mode Transmitter -------------------------------------------------*/
   if ((SPI_CHECK_FLAG(itflag, SPI_FLAG_TXE) != RESET) && (SPI_CHECK_IT_SOURCE(itsource, SPI_IT_TXE) != RESET))
   {
-    hspi->TxISR(hspi);
+    //printf("SPIT\r\n");
+	hspi->TxISR(hspi);
     return;
   }
 
@@ -2399,9 +2401,11 @@ void HAL_SPI_IRQHandler(SPI_HandleTypeDef *hspi)
   if (((SPI_CHECK_FLAG(itflag, SPI_FLAG_MODF) != RESET) || (SPI_CHECK_FLAG(itflag, SPI_FLAG_OVR) != RESET)
        || (SPI_CHECK_FLAG(itflag, SPI_FLAG_FRE) != RESET)) && (SPI_CHECK_IT_SOURCE(itsource, SPI_IT_ERR) != RESET))
   {
-    /* SPI Overrun error interrupt occurred ----------------------------------*/
+
+	/* SPI Overrun error interrupt occurred ----------------------------------*/
     if (SPI_CHECK_FLAG(itflag, SPI_FLAG_OVR) != RESET)
     {
+    	//printf("errOVR\r\n");
       if (hspi->State != HAL_SPI_STATE_BUSY_TX)
       {
         SET_BIT(hspi->ErrorCode, HAL_SPI_ERROR_OVR);
@@ -2417,6 +2421,7 @@ void HAL_SPI_IRQHandler(SPI_HandleTypeDef *hspi)
     /* SPI Mode Fault error interrupt occurred -------------------------------*/
     if (SPI_CHECK_FLAG(itflag, SPI_FLAG_MODF) != RESET)
     {
+    	//printf("errMDF\r\n");
       SET_BIT(hspi->ErrorCode, HAL_SPI_ERROR_MODF);
       __HAL_SPI_CLEAR_MODFFLAG(hspi);
     }
@@ -2424,12 +2429,14 @@ void HAL_SPI_IRQHandler(SPI_HandleTypeDef *hspi)
     /* SPI Frame error interrupt occurred ------------------------------------*/
     if (SPI_CHECK_FLAG(itflag, SPI_FLAG_FRE) != RESET)
     {
-      SET_BIT(hspi->ErrorCode, HAL_SPI_ERROR_FRE);
+    	//printf("errFRM\r\n");
+    	SET_BIT(hspi->ErrorCode, HAL_SPI_ERROR_FRE);
       __HAL_SPI_CLEAR_FREFLAG(hspi);
     }
 
     if (hspi->ErrorCode != HAL_SPI_ERROR_NONE)
     {
+      //printf("err0\r\n");
       /* Disable all interrupts */
       __HAL_SPI_DISABLE_IT(hspi, SPI_IT_RXNE | SPI_IT_TXE | SPI_IT_ERR);
 
