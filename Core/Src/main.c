@@ -73,7 +73,7 @@ uint8_t aTxSlaveBuffer[] = "SPI Slave MSG1";
 uint8_t aRxBuffer[DATA_LENGTH];
 
 static volatile uint8_t slave_send = 0;
-static volatile uint8_t master_rcv = 0;
+static volatile uint8_t master_rcv = 1;
 /**
   * @brief  The application entry point.
   * @retval int
@@ -90,48 +90,64 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
-  //MX_DMA_Init();
+  MX_DMA_Init();
   MX_SPI3_Init();
   MX_SPI4_Init();
   MX_USART3_UART_Init();
 
 
   printf("main loop\r\n");
-  if(HAL_SPI_Receive_IT(&hspi3, (uint8_t *)&aRxBuffer[0], DATA_LENGTH) != HAL_OK)
-  {
-	  printf("SPI master error\r\n");
-  }
-
 
   /* Infinite loop */
   while (1)
   {
 	  while((HAL_SPI_GetState(&hspi3) != HAL_SPI_STATE_READY) && (HAL_SPI_GetState(&hspi4) != HAL_SPI_STATE_READY))
 	  {
-		  HAL_Delay(50);
+		  HAL_Delay(100);
+		  HAL_GPIO_TogglePin(LD1_GPIO_Port, LD1_Pin);
 	  }
 
-	  if (HAL_SPI_Receive_IT(&hspi3, (uint8_t *)&aRxBuffer[0], DATA_LENGTH) != HAL_OK)
+
+	  if (slave_send)
 	  {
-		  printf("SPI master error\r\n");
-	  }
+		 memset(aRxBuffer, 0, DATA_LENGTH);
+		 HAL_StatusTypeDef status = HAL_SPI_Receive(&hspi3,  (uint8_t *)&aRxBuffer[0], DATA_LENGTH, 500);
 
+		 if(HAL_SPI_Transmit_IT(&hspi4, aTxSlaveBuffer, sizeof(aTxSlaveBuffer)) != HAL_OK)
+		 {
+			 printf("SPI Transmit error\r\n");
+		 }
+
+		 switch (status)
+		 {
+		 	 case HAL_OK:
+		 		 printf("SPI Receive OK\r\n");
+		 		 printf("RXM: %s\r\n\n",(char*)aRxBuffer);
+		 		 memset(aRxBuffer, 0, DATA_LENGTH);
+		 		 break;
+
+		 	 case HAL_ERROR:
+		 		 printf("SPI Receive ERROR\r\n");
+		 		 break;
+
+		 	 case HAL_TIMEOUT:
+		 		 printf("SPI Receive TIMEOUT\r\n");
+		 		 break;
+
+		 	 case HAL_BUSY:
+		 		printf("SPI Receive BUSY\r\n");
+		 		break;
+
+		 	 default:
+		 		 printf("SPI Receive UNDEFINED\r\n");
+		 		 break;
+		 }
+	 	 slave_send = 0;
+	  }
 
 	  HAL_GPIO_TogglePin(LD1_GPIO_Port, LD1_Pin);
 	  HAL_Delay(1000);
 
-
-//	  if(HAL_SPI_Receive(&hspi3, (uint8_t *)&aRxBuffer[0], DATA_LENGTH, 1000) != HAL_OK)
-//	  {
-//		  printf("SPI master error\r\n");
-//	  }
-//	  else
-//	  {
-//		  printf("RXM: %s\r\n\n",(char*)aRxBuffer);
-//		  //printf("SPI master OK\r\n");
-//	  }
-
-	  //memset(aRxBuffer, 0, DATA_LENGTH);
   }
 }
 
@@ -143,13 +159,12 @@ void HAL_SPI_RxCpltCallback(SPI_HandleTypeDef *hspi)
 {
 	if(hspi->Instance == SPI3)
 	{
-		master_rcv = 1;
 		printf("RXM: %s\r\n\n",(char*)aRxBuffer);
+
 	}
 	else if(hspi->Instance == SPI4)
 	{
 		printf("RXS: %s\r\n\n",(char*)aRxBuffer);
-		slave_send = 1;
 	}
 }
 
@@ -159,12 +174,10 @@ void HAL_SPI_TxCpltCallback(SPI_HandleTypeDef *hspi)
 	if(hspi->Instance == SPI3)
 	{
 		printf("SPI Master transmited\r\n");
-		slave_send = 0;
 	}
 	else if(hspi->Instance == SPI4)
 	{
 		printf("SPI Slave transmited\r\n");
-		slave_send = 0;
 	}
 }
 
@@ -185,14 +198,17 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
 	 if ((GPIO_Pin == USER_Btn_Pin) && (slave_send == 0))
 	 {
-		 //printf("button EXTI\r\n");
-		 //slave_send = 1;
+		 printf("button EXTI\r\n");
+		 slave_send = 1;
 
-#if 1
+#if 0
 		 if(HAL_SPI_Transmit_IT(&hspi4, aTxSlaveBuffer, sizeof(aTxSlaveBuffer)) != HAL_OK)
 		 {
 			 //Error_Handler();
 		 }
+#else
+
+
 #endif
 
 	 }
@@ -271,6 +287,7 @@ static void MX_SPI3_Init(void)
   {
     Error_Handler();
   }
+
 }
 
 /**

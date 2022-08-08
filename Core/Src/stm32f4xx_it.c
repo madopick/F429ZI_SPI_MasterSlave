@@ -145,13 +145,7 @@ void SysTick_Handler(void)
   */
 void DMA1_Stream0_IRQHandler(void)
 {
-  /* USER CODE BEGIN DMA1_Stream0_IRQn 0 */
-
-  /* USER CODE END DMA1_Stream0_IRQn 0 */
   HAL_DMA_IRQHandler(&hdma_spi3_rx);
-  /* USER CODE BEGIN DMA1_Stream0_IRQn 1 */
-
-  /* USER CODE END DMA1_Stream0_IRQn 1 */
 }
 
 /**
@@ -159,13 +153,7 @@ void DMA1_Stream0_IRQHandler(void)
   */
 void DMA1_Stream5_IRQHandler(void)
 {
-  /* USER CODE BEGIN DMA1_Stream5_IRQn 0 */
-
-  /* USER CODE END DMA1_Stream5_IRQn 0 */
   HAL_DMA_IRQHandler(&hdma_spi3_tx);
-  /* USER CODE BEGIN DMA1_Stream5_IRQn 1 */
-
-  /* USER CODE END DMA1_Stream5_IRQn 1 */
 }
 
 /**
@@ -173,13 +161,7 @@ void DMA1_Stream5_IRQHandler(void)
   */
 void DMA2_Stream0_IRQHandler(void)
 {
-  /* USER CODE BEGIN DMA2_Stream0_IRQn 0 */
-
-  /* USER CODE END DMA2_Stream0_IRQn 0 */
   HAL_DMA_IRQHandler(&hdma_spi4_rx);
-  /* USER CODE BEGIN DMA2_Stream0_IRQn 1 */
-
-  /* USER CODE END DMA2_Stream0_IRQn 1 */
 }
 
 /**
@@ -187,13 +169,7 @@ void DMA2_Stream0_IRQHandler(void)
   */
 void DMA2_Stream1_IRQHandler(void)
 {
-  /* USER CODE BEGIN DMA2_Stream1_IRQn 0 */
-
-  /* USER CODE END DMA2_Stream1_IRQn 0 */
   HAL_DMA_IRQHandler(&hdma_spi4_tx);
-  /* USER CODE BEGIN DMA2_Stream1_IRQn 1 */
-
-  /* USER CODE END DMA2_Stream1_IRQn 1 */
 }
 
 /**
